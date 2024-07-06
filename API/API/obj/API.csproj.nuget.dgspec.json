@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\antonio\\Desktop\\Rervisa Csahrps\\prova-a1\\API\\API\\API.csproj": {}
+    "C:\\Users\\antonio\\Desktop\\provaA1\\API\\API\\API.csproj": {}
   },
   "projects": {
-    "C:\\Users\\antonio\\Desktop\\Rervisa Csahrps\\prova-a1\\API\\API\\API.csproj": {
+    "C:\\Users\\antonio\\Desktop\\provaA1\\API\\API\\API.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\antonio\\Desktop\\Rervisa Csahrps\\prova-a1\\API\\API\\API.csproj",
+        "projectUniqueName": "C:\\Users\\antonio\\Desktop\\provaA1\\API\\API\\API.csproj",
         "projectName": "API",
-        "projectPath": "C:\\Users\\antonio\\Desktop\\Rervisa Csahrps\\prova-a1\\API\\API\\API.csproj",
+        "projectPath": "C:\\Users\\antonio\\Desktop\\provaA1\\API\\API\\API.csproj",
         "packagesPath": "C:\\Users\\antonio\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\antonio\\Desktop\\Rervisa Csahrps\\prova-a1\\API\\API\\obj\\",
+        "outputPath": "C:\\Users\\antonio\\Desktop\\provaA1\\API\\API\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\antonio\\AppData\\Roaming\\NuGet\\NuGet.Config"
