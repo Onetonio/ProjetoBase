@@ -1,12 +1,9 @@
-using System.ComponentModel.DataAnnotations;
 using API.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
-
-//Registrar o serviço de banco de dados na aplicação
 builder.Services.AddDbContext<AppDataContext>();
-
 builder.Services.AddCors(
     options =>
     {
@@ -20,113 +17,90 @@ builder.Services.AddCors(
 
 var app = builder.Build();
 
-List<Produto> produtos = new List<Produto>();
 
-// Endpoints = Funcionalidades - JSON
-// POST: http://localhost:5076/api/produto/cadastrar
-app.MapPost("/api/produto/cadastrar", ([FromBody] Produto produto,
-    [FromServices] AppDataContext context) =>
+app.MapGet("/", () => "Prova A1");
+
+//ENDPOINTS DE CATEGORIA
+//GET: http://localhost:5000/categoria/listar
+app.MapGet("/categoria/listar", ([FromServices] AppDataContext ctx) =>
 {
-    //Validando os atributos do objeto produto
-    List<ValidationResult> erros = new List<ValidationResult>();
-    if (!Validator.TryValidateObject(
-            produto, new ValidationContext(produto), erros, true))
+    if (ctx.Categorias.Any())
     {
-        return Results.BadRequest(erros);
+        return Results.Ok(ctx.Categorias.ToList());
     }
-
-    //Adicionando o produto dentro da tabela no banco de dados
-    //O produto não pode ter o mesmo nome de algum produto já cadastrado
-    Produto? produtoBuscado = context.Produtos.FirstOrDefault(x =>
-        x.Nome == produto.Nome);
-
-    if (produtoBuscado is null)
-    {
-        produto.Nome = produto.Nome.ToUpper();
-        context.Produtos.Add(produto);
-        context.SaveChanges();
-        return Results.Created($"/api/produto/buscar/{produto.Id}", produto);
-    }
-    return Results.BadRequest("Já existe um produto com o mesmo nome");
-
+    return Results.NotFound("Nenhuma categoria encontrada");
 });
 
-// GET: http://localhost:5076/api/produto/listar
-app.MapGet("/api/produto/listar", ([FromServices] AppDataContext context) =>
+//POST: http://localhost:5000/categoria/cadastrar
+app.MapPost("/categoria/cadastrar", ([FromServices] AppDataContext ctx, [FromBody] Categoria categoria) =>
 {
-    if (context.Produtos.Any())
-    {
-        return Results.Ok(context.Produtos.ToList());
-    }
-    return Results.NotFound("Não existem produtos na tabela");
+    ctx.Categorias.Add(categoria);
+    ctx.SaveChanges();
+    return Results.Created("", categoria);
 });
 
-// GET: http://localhost:5076/api/produto/buscar/{iddoproduto}
-app.MapGet("/api/produto/buscar/{id}", ([FromRoute] string id,
-    [FromServices] AppDataContext context) =>
+//ENDPOINTS DE TAREFA
+//GET: http://localhost:5000/tarefas/listar
+app.MapGet("/tarefas/listar", ([FromServices] AppDataContext ctx) =>
 {
-    //Endpoint com várias linhas de código
-    Produto? produto = context.Produtos.FirstOrDefault(x => x.Id == id);
-
-    if (produto is null)
+    if (ctx.Tarefas.Any())
     {
-        return Results.NotFound("Produto não encontrado!");
+        return Results.Ok(ctx.Tarefas.ToList());
     }
-    return Results.Ok(produto);
+    return Results.NotFound("Nenhuma tarefa encontrada");
 });
 
-// DELETE: http://localhost:5076/api/produto/deletar/{iddoproduto}
-app.MapDelete("/api/produto/deletar/{id}", ([FromRoute] string id,
-    [FromServices] AppDataContext context) =>
+//POST: http://localhost:5000/tarefas/cadastrar
+app.MapPost("/tarefas/cadastrar", ([FromServices] AppDataContext ctx, [FromBody] Tarefa tarefa) =>
 {
-    Produto? produto = context.Produtos.Find(id);
-
-    if (produto is null)
+    Categoria? categoria = ctx.Categorias.Find(tarefa.CategoriaId);
+    if (categoria == null)
     {
-        return Results.NotFound("Produto não encontrado!");
+        return Results.NotFound("Categoria não encontrada");
     }
-    context.Produtos.Remove(produto);
-    context.SaveChanges();
-    return Results.Ok(context.Produtos.ToList());
+    tarefa.Categoria = categoria;
+    ctx.Tarefas.Add(tarefa);
+    ctx.SaveChanges();
+    return Results.Created("", tarefa);
 });
 
 
-// PUT: http://localhost:5076/api/produto/alterar/{iddoproduto}
-app.MapPut("/api/produto/alterar/{id}", ([FromRoute] string id,
-    [FromBody] Produto produtoAlterado,
-    [FromServices] AppDataContext context) =>
-{
-    //Endpoint com várias linhas de código    
-    Produto? produto = context.Produtos.Find(id);
 
-    if (produto is null)
+//PUT: http://localhost:5000/tarefas/alterar/{id}
+app.MapPut("/tarefas/alterar/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id) =>
+{
+    Tarefa? tarefa = ctx.Tarefas.Find(id);
+    if (tarefa == null)
     {
-        return Results.NotFound("Produto não encontrado!");
+        return Results.NotFound("Tarefa não encontrada");
+    }
+    
+    if(tarefa.Status == "Não iniciada"){
+        tarefa.Status = "Em andamento";
+    }
+    else if(tarefa.Status == "Em andamento")
+    {
+        tarefa.Status = "Concluída";
     }
 
-    produto.Nome = produtoAlterado.Nome;
-    produto.Descricao = produtoAlterado.Descricao;
-    produto.Preco = produtoAlterado.Preco;
-
-    context.Produtos.Update(produto);
-    context.SaveChanges();
-
-    return Results.Ok("Produto alterado com sucesso!");
+    ctx.Tarefas.Update(tarefa);
+    ctx.SaveChanges();
+    return Results.Ok("Tarefa alterada com sucesso");
 });
+
+//GET: http://localhost:5000/tarefas/naoconcluidas
+app.MapGet("/tarefas/naoconcluidas", ([FromServices] AppDataContext ctx) =>
+{
+    return Results.Ok(ctx.Tarefas.ToList().Where(s => s.Status == "Não iniciada" || s.Status == "Em andamento"));
+    
+});
+
+//GET: http://localhost:5000/tarefas/concluidas
+app.MapGet("/tarefas/concluidas", ([FromServices] AppDataContext ctx) =>
+{
+    return Results.Ok(ctx.Tarefas.ToList().Where(s => s.Status == "Concluída"));
+});
+
 
 app.UseCors("AcessoTotal");
 app.Run();
-
-//CONFIGURAR O BANCO NA APLICAÇÃO
-//1 - Quais as bibliotecas serão instaladas no projeto
-//2 - O que é necessário adicionar/alterar no projeto
-//para configurar a aplicação com o banco
-
-//dotnet add package Microsoft.EntityFrameworkCore.Sqlite 
-//--version 8.0.3
-//dotnet add package Microsoft.EntityFrameworkCore.Design 
-//--version 8.0.3 
-
-//EXERÍCIOS PARA O EF
-//1 - Cadastrar o objeto de produto no banco
-//2 - Listar os registros da tabela

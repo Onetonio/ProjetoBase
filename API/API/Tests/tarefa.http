@@ -1,0 +1,24 @@
+### Listar todas as tarefas
+GET http://localhost:5000/tarefas/listar
+
+### Cadastrar uma nova tarefa
+POST http://localhost:5000/tarefas/cadastrar
+Content-Type: application/json
+
+{
+    "titulo": "Me aproximar da minha tartaruga",
+    "descricao": "Me aproximar da minha tartaruga",
+    "categoriaId": "b9cf9b2b-bd80-4dfc-ac74-fd8a222c68ed"
+}
+
+
+###Alterar uma nova tarefa
+PUT http://localhost:5000/tarefas/alterar/5c3eefb3-b3d7-4a9b-9f37-78039c88c801
+
+
+###Listar tarefas não concluidas
+GET http://localhost:5000/tarefas/naoconcluidas
+
+
+###Listar tarefas concluídas
+GET http://localhost:5000/tarefas/concluidas
