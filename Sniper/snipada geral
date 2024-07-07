@@ -1,0 +1,433 @@
+/// DELETE: http://localhost:5000/tarefas/excluir/{id}
+app.MapDelete("/tarefas/excluir/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id) =>
+{
+    Tarefa? tarefa = ctx.Tarefas.Find(id);
+    if (tarefa == null)
+    {
+        return Results.NotFound("Tarefa não encontrada");
+    }
+
+    ctx.Tarefas.Remove(tarefa);
+    ctx.SaveChanges();
+    return Results.Ok("Tarefa excluída com sucesso");
+});
+
+// CRIAR UMA TAREFA
+
+// POST: http://localhost:5000/tarefas/criar
+app.MapPost("/tarefas/criar", ([FromServices] AppDataContext ctx, [FromBody] Tarefa novaTarefa) =>
+{
+    ctx.Tarefas.Add(novaTarefa);
+    ctx.SaveChanges();
+    return Results.Created($"/tarefas/{novaTarefa.Id}", novaTarefa);
+});
+
+// LISTAR AS TAREFAS 
+
+// GET: http://localhost:5000/tarefas
+app.MapGet("/tarefas", ([FromServices] AppDataContext ctx) =>
+{
+    return Results.Ok(ctx.Tarefas.ToList());
+});
+
+// OBTER TAREFA PELO ID 
+
+// GET: http://localhost:5000/tarefas/{id}
+app.MapGet("/tarefas/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id) =>
+{
+    Tarefa? tarefa = ctx.Tarefas.Find(id);
+    if (tarefa == null)
+    {
+        return Results.NotFound("Tarefa não encontrada");
+    }
+    return Results.Ok(tarefa);
+});
+
+
+// ATUALIZAR O TITULO E A DESCRIÇÃO DE UMA TAREFA
+
+// PUT: http://localhost:5000/tarefas/atualizar/{id}
+app.MapPut("/tarefas/atualizar/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id, [FromBody] Tarefa tarefaAtualizada) =>
+{
+    Tarefa? tarefa = ctx.Tarefas.Find(id);
+    if (tarefa == null)
+    {
+        return Results.NotFound("Tarefa não encontrada");
+    }
+
+    tarefa.Titulo = tarefaAtualizada.Titulo;
+    tarefa.Descricao = tarefaAtualizada.Descricao;
+
+    ctx.Tarefas.Update(tarefa);
+    ctx.SaveChanges();
+    return Results.Ok("Tarefa atualizada com sucesso");
+});
+
+//MARCAR TAREFA COMO CONCLUIDA
+
+
+// PATCH: http://localhost:5000/tarefas/concluir/{id}
+app.MapPatch("/tarefas/concluir/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id) =>
+{
+    Tarefa? tarefa = ctx.Tarefas.Find(id);
+    if (tarefa == null)
+    {
+        return Results.NotFound("Tarefa não encontrada");
+    }
+
+    tarefa.Status = "Concluída";
+    ctx.Tarefas.Update(tarefa);
+    ctx.SaveChanges();
+    return Results.Ok("Tarefa marcada como concluída");
+});
+
+
+// OBTER TAREFAS POR PRIORIDADE
+
+// GET: http://localhost:5000/tarefas/porprioridade/{prioridade}
+app.MapGet("/tarefas/porprioridade/{prioridade}", ([FromServices] AppDataContext ctx, [FromRoute] int prioridade) =>
+{
+    var tarefas = ctx.Tarefas.Where(t => t.Prioridade == prioridade).ToList();
+    if (tarefas.Count == 0)
+    {
+        return Results.NotFound("Nenhuma tarefa encontrada com a prioridade especificada");
+    }
+    return Results.Ok(tarefas);
+});
+
+// ATUALIZAR A PRIORIDADE DE UMA TAREFA 
+
+// PATCH: http://localhost:5000/tarefas/atualizarprioridade/{id}
+app.MapPatch("/tarefas/atualizarprioridade/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id, [FromBody] int novaPrioridade) =>
+{
+    Tarefa? tarefa = ctx.Tarefas.Find(id);
+    if (tarefa == null)
+    {
+        return Results.NotFound("Tarefa não encontrada");
+    }
+
+    tarefa.Prioridade = novaPrioridade;
+    ctx.Tarefas.Update(tarefa);
+    ctx.SaveChanges();
+    return Results.Ok("Prioridade da tarefa atualizada com sucesso");
+});
+
+// OBTER TAREFAS PORT DATA DE CRIAÇÃO
+
+// GET: http://localhost:5000/tarefas/pordata/{data}
+app.MapGet("/tarefas/pordata/{data}", ([FromServices] AppDataContext ctx, [FromRoute] DateTime data) =>
+{
+    var tarefas = ctx.Tarefas.Where(t => t.DataCriacao.Date == data.Date).ToList();
+    if (tarefas.Count == 0)
+    {
+        return Results.NotFound("Nenhuma tarefa encontrada para a data especificada");
+    }
+    return Results.Ok(tarefas);
+});
+
+// EXCLUIR TODAS AS TAREFAS CONCLUIDAS
+
+// DELETE: http://localhost:5000/tarefas/excluirconcluidas
+app.MapDelete("/tarefas/excluirconcluidas", ([FromServices] AppDataContext ctx) =>
+{
+    var tarefasConcluidas = ctx.Tarefas.Where(t => t.Status == "Concluída").ToList();
+    if (tarefasConcluidas.Count == 0)
+    {
+        return Results.NotFound("Nenhuma tarefa concluída encontrada");
+    }
+
+    ctx.Tarefas.RemoveRange(tarefasConcluidas);
+    ctx.SaveChanges();
+    return Results.Ok("Todas as tarefas concluídas foram excluídas com sucesso");
+});
+
+//OBTER TAREFAS POR INTERVALO DE DATAS
+
+// GET: http://localhost:5000/tarefas/porintervalo?inicio={inicio}&fim={fim}
+app.MapGet("/tarefas/porintervalo", ([FromServices] AppDataContext ctx, [FromQuery] DateTime inicio, [FromQuery] DateTime fim) =>
+{
+    var tarefas = ctx.Tarefas.Where(t => t.DataCriacao.Date >= inicio.Date && t.DataCriacao.Date <= fim.Date).ToList();
+    if (tarefas.Count == 0)
+    {
+        return Results.NotFound("Nenhuma tarefa encontrada no intervalo de datas especificado");
+    }
+    return Results.Ok(tarefas);
+});
+
+// ATUALIZAR A DESCRICÇÃO DE VARIAS TAREFAS
+
+// PUT: http://localhost:5000/tarefas/atualizardescricoes
+app.MapPut("/tarefas/atualizardescricoes", ([FromServices] AppDataContext ctx, [FromBody] List<Tarefa> tarefasAtualizadas) =>
+{
+    foreach (var tarefaAtualizada in tarefasAtualizadas)
+    {
+        var tarefa = ctx.Tarefas.Find(tarefaAtualizada.Id);
+        if (tarefa != null)
+        {
+            tarefa.Descricao = tarefaAtualizada.Descricao;
+            ctx.Tarefas.Update(tarefa);
+        }
+    }
+    ctx.SaveChanges();
+    return Results.Ok("Descrições das tarefas atualizadas com sucesso");
+});
+
+//OBTER A CONTAGEM DE TAREFAS POR STATUS
+
+// GET: http://localhost:5000/tarefas/contagemporstatus
+app.MapGet("/tarefas/contagemporstatus", ([FromServices] AppDataContext ctx) =>
+{
+    var contagem = ctx.Tarefas.GroupBy(t => t.Status)
+                              .Select(g => new { Status = g.Key, Count = g.Count() })
+                              .ToList();
+    return Results.Ok(contagem);
+});
+
+// CLONAR TAREFA 
+
+// POST: http://localhost:5000/tarefas/clonar/{id}
+app.MapPost("/tarefas/clonar/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id) =>
+{
+    Tarefa? tarefa = ctx.Tarefas.Find(id);
+    if (tarefa == null)
+    {
+        return Results.NotFound("Tarefa não encontrada");
+    }
+
+    Tarefa novaTarefa = new Tarefa
+    {
+        Titulo = tarefa.Titulo,
+        Descricao = tarefa.Descricao,
+        Status = tarefa.Status,
+        Prioridade = tarefa.Prioridade,
+        DataCriacao = DateTime.Now
+    };
+
+    ctx.Tarefas.Add(novaTarefa);
+    ctx.SaveChanges();
+    return Results.Created($"/tarefas/{novaTarefa.Id}", novaTarefa);
+});
+
+//OBTER PRODUTOS COM ESTOQUE BAIXO 
+
+// GET: http://localhost:5000/produtos/estoquebaixo
+app.MapGet("/produtos/estoquebaixo", ([FromServices] AppDataContext ctx) =>
+{
+    return Results.Ok(ctx.Produtos.ToList().Where(p => p.Quantidade < 10));
+});
+
+//ATUALIZAR A CATEGORIA DE VARIOS PRODUTOS
+
+// PUT: http://localhost:5000/produtos/atualizarcategoria
+app.MapPut("/produtos/atualizarcategoria", ([FromServices] AppDataContext ctx, [FromBody] List<Produto> produtosAtualizados) =>
+{
+    foreach (var produtoAtualizado in produtosAtualizados)
+    {
+        var produto = ctx.Produtos.Find(produtoAtualizado.Id);
+        if (produto != null)
+        {
+            produto.Categoria = produtoAtualizado.Categoria;
+            ctx.Produtos.Update(produto);
+        }
+    }
+    ctx.SaveChanges();
+    return Results.Ok("Categorias dos produtos atualizadas com sucesso");
+});
+
+//ATUALIZAR O STATUS DE UM PEDIDO
+
+// PUT: http://localhost:5000/pedidos/atualizarstatus/{id}
+app.MapPut("/pedidos/atualizarstatus/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id, [FromBody] string novoStatus) =>
+{
+    Pedido? pedido = ctx.Pedidos.Find(id);
+    if (pedido == null)
+    {
+        return Results.NotFound("Pedido não encontrado");
+    }
+
+    pedido.Status = novoStatus;
+    ctx.Pedidos.Update(pedido);
+    ctx.SaveChanges();
+    return Results.Ok("Status do pedido atualizado com sucesso");
+});
+
+//OBTER PEDIDOS POR CLIENTE 
+
+// GET: http://localhost:5000/pedidos/porcliente/{clienteId}
+app.MapGet("/pedidos/porcliente/{clienteId}", ([FromServices] AppDataContext ctx, [FromRoute] string clienteId) =>
+{
+    var pedidos = ctx.Pedidos.Where(p => p.ClienteId == clienteId).ToList();
+    if (pedidos.Count == 0)
+    {
+        return Results.NotFound("Nenhum pedido encontrado para o cliente especificado");
+    }
+    return Results.Ok(pedidos);
+});
+
+//ALTERAR O STATUS DE UM PRODUTO 
+
+// PUT: http://localhost:5000/produtos/alterarstatus/{id}
+app.MapPut("/produtos/alterarstatus/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id) =>
+{
+    Produto? produto = ctx.Produtos.Find(id);
+    if (produto == null)
+    {
+        return Results.NotFound("Produto não encontrado");
+    }
+    
+    if(produto.Status == "Disponível"){
+        produto.Status = "Esgotado";
+    }
+    else if(produto.Status == "Esgotado")
+    {
+        produto.Status = "Disponível";
+    }
+
+    ctx.Produtos.Update(produto);
+    ctx.SaveChanges();
+    return Results.Ok("Status do produto alterado com sucesso");
+});
+
+//ATUALIZAR O AUTOR DE UM LIVRO
+
+// PUT: http://localhost:5000/livros/atualizarauthor/{id}
+app.MapPut("/livros/atualizarauthor/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id, [FromBody] string novoAutor) =>
+{
+    Livro? livro = ctx.Livros.Find(id);
+    if (livro == null)
+    {
+        return Results.NotFound("Livro não encontrado");
+    }
+
+    livro.Autor = novoAutor;
+
+    ctx.Livros.Update(livro);
+    ctx.SaveChanges();
+    return Results.Ok("Autor do livro atualizado com sucesso");
+});
+
+//ATUALIZAR O ENDEREÇO DE UM CLIENTE
+
+// PUT: http://localhost:5000/clientes/atualizarendereco/{id}
+app.MapPut("/clientes/atualizarendereco/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id, [FromBody] string novoEndereco) =>
+{
+    Cliente? cliente = ctx.Clientes.Find(id);
+    if (cliente == null)
+    {
+        return Results.NotFound("Cliente não encontrado");
+    }
+
+    cliente.Endereco = novoEndereco;
+
+    ctx.Clientes.Update(cliente);
+    ctx.SaveChanges();
+    return Results.Ok("Endereço do cliente atualizado com sucesso");
+});
+
+//ATUALIZAR CARGO DE UM FUNCIONARIO
+
+// PUT: http://localhost:5000/funcionarios/atualizarcargo/{id}
+app.MapPut("/funcionarios/atualizarcargo/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id, [FromBody] string novoCargo) =>
+{
+    Funcionario? funcionario = ctx.Funcionarios.Find(id);
+    if (funcionario == null)
+    {
+        return Results.NotFound("Funcionário não encontrado");
+    }
+
+    funcionario.Cargo = novoCargo;
+
+    ctx.Funcionarios.Update(funcionario);
+    ctx.SaveChanges();
+    return Results.Ok("Cargo do funcionário atualizado com sucesso");
+});
+
+
+//ALTERAR E EXCLUIR DENTRO DO DO LISTAR PRODUTOS DO FRONT (PROFESSOR)
+
+import { useEffect, useState } from "react";
+import { Tarefa } from "../models/tarefa";
+import axios from "axios";
+
+function ListarTarefas() {
+  const [tarefas, setTarefas] = useState<Tarefa[]>([]);
+
+  useEffect(() => {
+    carregarTarefas();
+  }, []);
+
+  function carregarTarefas() {
+    //FETCH ou AXIOS
+    fetch("http://localhost:5000/tarefas/listar")
+      .then((resposta) => resposta.json())
+      .then((tarefas: Tarefa[]) => {
+        console.table(tarefas);
+        setTarefas(tarefas);
+      });
+  }
+
+  function alterar(id: string) {
+    console.log(`Id: ${id}`);
+    axios
+      .put(`http://localhost:5000/tarefas/alterar/${id}`)
+      .then((resposta) => {
+        setTarefas(resposta.data);
+      });
+  }
+   function deletar(id: string): void {
+    console.log(`http://localhost:5076/${id}`);
+    axios
+      .delete<Produto[]>(
+        `http://localhost:5076/api/produto/deletar/${id}`
+      )
+      .then((resposta) => {
+        setProdutos(resposta.data);
+      });
+  }
+
+  return (
+    <div>
+      <h1>Listar Tarefas</h1>
+      <table border={1}>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Títulos</th>
+            <th>Descrição</th>
+            <th>Status</th>
+            <th>Criado Em</th>
+            <th>Alterar Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {tarefas.map((tarefa) => (
+            <tr key={tarefa.tarefaId}>
+              <td>{tarefa.tarefaId}</td>
+              <td>{tarefa.titulo}</td>
+              <td>{tarefa.descricao}</td>
+              <td>{tarefa.status}</td>
+              <td>{tarefa.criadoEm}</td>
+              <td>
+                <button
+                  onClick={() => {
+                    alterar(tarefa.tarefaId!);
+                  }}
+                >
+                  Alterar
+                </button>
+              </td>
+               <td>
+                <button onClick={() => deletar(produto.id!)}>
+                  Deletar
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+export default ListarTarefas;
+

@@ -1,0 +1,189 @@
+//APLICAR JUROS A UMA CONTA 
+
+// PUT: http://localhost:5000/contas/aplicarjuros/{id}
+app.MapPut("/contas/aplicarjuros/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id, [FromBody] double taxaJuros) =>
+{
+    Conta? conta = ctx.Contas.Find(id);
+    if (conta == null)
+    {
+        return Results.NotFound("Conta não encontrada");
+    }
+
+    conta.Saldo *= (1 + taxaJuros / 100);
+
+    ctx.Contas.Update(conta);
+    ctx.SaveChanges();
+    return Results.Ok("Juros aplicados com sucesso");
+});
+
+//ATUALIZAR A QUANTIDADE DE ESTOQUE
+
+// PUT: http://localhost:5000/estoque/atualizarquantidade/{id}
+app.MapPut("/estoque/atualizarquantidade/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id, [FromBody] int quantidade) =>
+{
+    Produto? produto = ctx.Produtos.Find(id);
+    if (produto == null)
+    {
+        return Results.NotFound("Produto não encontrado");
+    }
+
+    produto.QuantidadeEmEstoque += quantidade;
+
+    ctx.Produtos.Update(produto);
+    ctx.SaveChanges();
+    return Results.Ok("Quantidade em estoque atualizada com sucesso");
+});
+
+//AJUSTAR SALARIO DE FUNCIONARIO
+
+// PUT: http://localhost:5000/funcionarios/ajustarsalario/{id}
+app.MapPut("/funcionarios/ajustarsalario/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id, [FromBody] double percentualAumento) =>
+{
+    Funcionario? funcionario = ctx.Funcionarios.Find(id);
+    if (funcionario == null)
+    {
+        return Results.NotFound("Funcionário não encontrado");
+    }
+
+    funcionario.Salario *= (1 + percentualAumento / 100);
+
+    ctx.Funcionarios.Update(funcionario);
+    ctx.SaveChanges();
+    return Results.Ok("Salário ajustado com sucesso");
+});
+
+//ADICIONAR PONTAS A NOTA DE UM ALUNO
+
+// PUT: http://localhost:5000/alunos/adicionarpontos/{id}
+app.MapPut("/alunos/adicionarpontos/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id, [FromBody] double pontos) =>
+{
+    Aluno? aluno = ctx.Alunos.Find(id);
+    if (aluno == null)
+    {
+        return Results.NotFound("Aluno não encontrado");
+    }
+
+    aluno.Nota += pontos;
+
+    ctx.Alunos.Update(aluno);
+    ctx.SaveChanges();
+    return Results.Ok("Pontos adicionados à nota do aluno com sucesso");
+});
+
+//APLICAR MULTA A FATURA 
+
+// PUT: http://localhost:5000/faturas/aplicarmulta/{id}
+app.MapPut("/faturas/aplicarmulta/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id, [FromBody] double percentualMulta) =>
+{
+    Fatura? fatura = ctx.Faturas.Find(id);
+    if (fatura == null)
+    {
+        return Results.NotFound("Fatura não encontrada");
+    }
+
+    fatura.ValorTotal *= (1 + percentualMulta / 100);
+
+    ctx.Faturas.Update(fatura);
+    ctx.SaveChanges();
+    return Results.Ok("Multa aplicada com sucesso");
+});
+
+//ADICIONAR HORAS A UM FUNCIONARIO
+
+// PUT: http://localhost:5000/bancodehoras/adicionarhoras/{id}
+app.MapPut("/bancodehoras/adicionarhoras/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id, [FromBody] int horas) =>
+{
+    Funcionario? funcionario = ctx.Funcionarios.Find(id);
+    if (funcionario == null)
+    {
+        return Results.NotFound("Funcionário não encontrado");
+    }
+
+    funcionario.HorasBanco += horas;
+
+    ctx.Funcionarios.Update(funcionario);
+    ctx.SaveChanges();
+    return Results.Ok("Horas adicionadas ao banco de horas do funcionário com sucesso");
+});
+
+//TRANSFERIR SALDO EM CONTA 
+
+// PUT: http://localhost:5000/contas/transferirsaldo
+app.MapPut("/contas/transferirsaldo", ([FromServices] AppDataContext ctx, [FromBody] Transferencia transferencia) =>
+{
+    Conta? contaOrigem = ctx.Contas.Find(transferencia.ContaOrigemId);
+    Conta? contaDestino = ctx.Contas.Find(transferencia.ContaDestinoId);
+    
+    if (contaOrigem == null || contaDestino == null)
+    {
+        return Results.NotFound("Conta de origem ou destino não encontrada");
+    }
+
+    if (contaOrigem.Saldo < transferencia.Valor)
+    {
+        return Results.BadRequest("Saldo insuficiente na conta de origem");
+    }
+
+    contaOrigem.Saldo -= transferencia.Valor;
+    contaDestino.Saldo += transferencia.Valor;
+
+    ctx.Contas.Update(contaOrigem);
+    ctx.Contas.Update(contaDestino);
+    ctx.SaveChanges();
+    return Results.Ok("Transferência realizada com sucesso");
+});
+
+//APLICAR COMISSÃO A VENDA
+
+// PUT: http://localhost:5000/vendas/aplicarcomissao/{id}
+app.MapPut("/vendas/aplicarcomissao/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id, [FromBody] double percentualComissao) =>
+{
+    Venda? venda = ctx.Vendas.Find(id);
+    if (venda == null)
+    {
+        return Results.NotFound("Venda não encontrada");
+    }
+
+    venda.Comissao = venda.ValorTotal * (percentualComissao / 100);
+
+    ctx.Vendas.Update(venda);
+    ctx.SaveChanges();
+    return Results.Ok("Comissão aplicada com sucesso");
+});
+
+//CALCULAR VALOR DE LOCAÇÃO 
+
+// PUT: http://localhost:5000/locacoes/calcularvalor/{id}
+app.MapPut("/locacoes/calcularvalor/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id, [FromBody] double diaria) =>
+{
+    Locacao? locacao = ctx.Locacoes.Find(id);
+    if (locacao == null)
+    {
+        return Results.NotFound("Locação não encontrada");
+    }
+
+    var diasLocacao = (locacao.DataFim - locacao.DataInicio).TotalDays;
+    locacao.ValorTotal = diasLocacao * diaria;
+
+    ctx.Locacoes.Update(locacao);
+    ctx.SaveChanges();
+    return Results.Ok("Valor da locação calculado com sucesso");
+});
+
+//ATUALIZAR PONTUAÇÃO DE UM JOGO
+
+// PUT: http://localhost:5000/jogos/atualizarpontuacao/{id}
+app.MapPut("/jogos/atualizarpontuacao/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id, [FromBody] int pontos) =>
+{
+    Jogo? jogo = ctx.Jogos.Find(id);
+    if (jogo == null)
+    {
+        return Results.NotFound("Jogo não encontrado");
+    }
+
+    jogo.Pontuacao += pontos;
+
+    ctx.Jogos.Update(jogo);
+    ctx.SaveChanges();
+    return Results.Ok("Pontuação do jogo atualizada com sucesso");
+});

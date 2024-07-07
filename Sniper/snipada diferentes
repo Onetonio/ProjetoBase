@@ -1,0 +1,269 @@
+//Atualizar o Status de um Compromisso com base na Data
+
+// PUT: http://localhost:5000/compromissos/atualizarstatus/{id}
+app.MapPut("/compromissos/atualizarstatus/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id) =>
+{
+    Compromisso? compromisso = ctx.Compromissos.Find(id);
+    if (compromisso == null)
+    {
+        return Results.NotFound("Compromisso não encontrado");
+    }
+    
+    if(compromisso.Data < DateTime.Now && compromisso.Status == "Agendado"){
+        compromisso.Status = "Concluído";
+    }
+
+    ctx.Compromissos.Update(compromisso);
+    ctx.SaveChanges();
+    return Results.Ok("Status do compromisso atualizado com sucesso");
+});
+
+//Verificar Disponibilidade de um Recurso
+
+// GET: http://localhost:5000/recursos/disponibilidade/{id}
+app.MapGet("/recursos/disponibilidade/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id) =>
+{
+    Recurso? recurso = ctx.Recursos.Find(id);
+    if (recurso == null)
+    {
+        return Results.NotFound("Recurso não encontrado");
+    }
+    
+    if(recurso.Disponivel){
+        return Results.Ok("Recurso disponível");
+    }
+    else{
+        return Results.Ok("Recurso indisponível");
+    }
+});
+
+
+//Cancelar Pedido se não Processado dentro de X Dias
+
+// PUT: http://localhost:5000/pedidos/cancelar/{id}
+app.MapPut("/pedidos/cancelar/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id) =>
+{
+    Pedido? pedido = ctx.Pedidos.Find(id);
+    if (pedido == null)
+    {
+        return Results.NotFound("Pedido não encontrado");
+    }
+
+    if (pedido.DataCriacao.AddDays(7) < DateTime.Now && pedido.Status == "Pendente")
+    {
+        pedido.Status = "Cancelado";
+    }
+
+    ctx.Pedidos.Update(pedido);
+    ctx.SaveChanges();
+    return Results.Ok("Status do pedido atualizado com sucesso");
+});
+
+//Atualizar o Progresso do Projeto com base nas Tarefas Concluídas
+
+// PUT: http://localhost:5000/projetos/atualizarprogresso/{id}
+app.MapPut("/projetos/atualizarprogresso/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id) =>
+{
+    Projeto? projeto = ctx.Projetos.Find(id);
+    if (projeto == null)
+    {
+        return Results.NotFound("Projeto não encontrado");
+    }
+
+    var totalTarefas = ctx.Tarefas.Count(t => t.ProjetoId == id);
+    var tarefasConcluidas = ctx.Tarefas.Count(t => t.ProjetoId == id && t.Status == "Concluída");
+    
+    projeto.Progresso = (tarefasConcluidas / (double)totalTarefas) * 100;
+
+    ctx.Projetos.Update(projeto);
+    ctx.SaveChanges();
+    return Results.Ok("Progresso do projeto atualizado com sucesso");
+});
+
+//Bloquear Usuário após X Tentativas Falhas de Login
+
+// PUT: http://localhost:5000/usuarios/bloquear/{id}
+app.MapPut("/usuarios/bloquear/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id) =>
+{
+    Usuario? usuario = ctx.Usuarios.Find(id);
+    if (usuario == null)
+    {
+        return Results.NotFound("Usuário não encontrado");
+    }
+
+    if (usuario.TentativasFalhas >= 3)
+    {
+        usuario.Bloqueado = true;
+    }
+
+    ctx.Usuarios.Update(usuario);
+    ctx.SaveChanges();
+    return Results.Ok("Status do usuário atualizado com sucesso");
+});
+
+//Marcar Feedback como Lido
+
+// PUT: http://localhost:5000/feedback/marcarcomoLido/{id}
+app.MapPut("/feedback/marcarcomoLido/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id) =>
+{
+    Feedback? feedback = ctx.Feedback.Find(id);
+    if (feedback == null)
+    {
+        return Results.NotFound("Feedback não encontrado");
+    }
+
+    feedback.Lido = true;
+
+    ctx.Feedback.Update(feedback);
+    ctx.SaveChanges();
+    return Results.Ok("Feedback marcado como lido");
+});
+
+
+//Conceder Permissão Temporária
+
+// PUT: http://localhost:5000/usuarios/concederpermissao/{id}
+app.MapPut("/usuarios/concederpermissao/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id, [FromBody] Permissao permissao) =>
+{
+    Usuario? usuario = ctx.Usuarios.Find(id);
+    if (usuario == null)
+    {
+        return Results.NotFound("Usuário não encontrado");
+    }
+
+    usuario.Permissoes.Add(permissao);
+    permissao.Validade = DateTime.Now.AddDays(7); // Permissão válida por 7 dias
+
+    ctx.Usuarios.Update(usuario);
+    ctx.SaveChanges();
+    return Results.Ok("Permissão concedida com sucesso");
+});
+
+//Conceder Permissão a um Usuário (PUT)
+
+// PUT: http://localhost:5000/usuarios/concederpermissao/{id}
+app.MapPut("/usuarios/concederpermissao/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id, [FromBody] Permissao permissao) =>
+{
+    Usuario? usuario = ctx.Usuarios.Find(id);
+    if (usuario == null)
+    {
+        return Results.NotFound("Usuário não encontrado");
+    }
+
+    usuario.Permissoes.Add(permissao);
+
+    ctx.Usuarios.Update(usuario);
+    ctx.SaveChanges();
+    return Results.Ok("Permissão concedida com sucesso");
+});
+
+//Ajustar Quantidade de Estoque
+
+// PUT: http://localhost:5000/inventario/ajustarquantidade/{id}
+app.MapPut("/inventario/ajustarquantidade/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id, [FromBody] int quantidade) =>
+{
+    Produto? produto = ctx.Produtos.Find(id);
+    if (produto == null)
+    {
+        return Results.NotFound("Produto não encontrado");
+    }
+
+    produto.Quantidade += quantidade;
+
+    ctx.Produtos.Update(produto);
+    ctx.SaveChanges();
+    return Results.Ok("Quantidade do produto ajustada com sucesso");
+});
+
+
+//APROVAR PAGAMENTO
+
+// PUT: http://localhost:5000/pagamentos/aprovar/{id}
+app.MapPut("/pagamentos/aprovar/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id) =>
+{
+    Pagamento? pagamento = ctx.Pagamentos.Find(id);
+    if (pagamento == null)
+    {
+        return Results.NotFound("Pagamento não encontrado");
+    }
+
+    pagamento.Aprovado = true;
+
+    ctx.Pagamentos.Update(pagamento);
+    ctx.SaveChanges();
+    return Results.Ok("Pagamento aprovado com sucesso");
+});
+
+//Marcar Notificação como Lida
+
+// PUT: http://localhost:5000/notificacoes/marcarcomolida/{id}
+app.MapPut("/notificacoes/marcarcomolida/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id) =>
+{
+    Notificacao? notificacao = ctx.Notificacoes.Find(id);
+    if (notificacao == null)
+    {
+        return Results.NotFound("Notificação não encontrada");
+    }
+
+    notificacao.Lida = true;
+
+    ctx.Notificacoes.Update(notificacao);
+    ctx.SaveChanges();
+    return Results.Ok("Notificação marcada como lida");
+});
+
+
+//Atualizar Nota de um Aluno
+
+// PUT: http://localhost:5000/alunos/atualizarnota/{id}
+app.MapPut("/alunos/atualizarnota/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id, [FromBody] double novaNota) =>
+{
+    Aluno? aluno = ctx.Alunos.Find(id);
+    if (aluno == null)
+    {
+        return Results.NotFound("Aluno não encontrado");
+    }
+
+    aluno.Nota = novaNota;
+
+    ctx.Alunos.Update(aluno);
+    ctx.SaveChanges();
+    return Results.Ok("Nota do aluno atualizada com sucesso");
+});
+
+//PROMOVER FUNCIONARIO
+
+// PUT: http://localhost:5000/funcionarios/promover/{id}
+app.MapPut("/funcionarios/promover/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id) =>
+{
+    Funcionario? funcionario = ctx.Funcionarios.Find(id);
+    if (funcionario == null)
+    {
+        return Results.NotFound("Funcionário não encontrado");
+    }
+
+    funcionario.Cargo = "Gerente";
+    funcionario.Salario *= 1.2; // Aumenta o salário em 20%
+
+    ctx.Funcionarios.Update(funcionario);
+    ctx.SaveChanges();
+    return Results.Ok("Funcionário promovido com sucesso");
+});
+
+//APLICAR DESCONTO NO PRODUTO
+
+// PUT: http://localhost:5000/produtos/aplicardesconto/{id}
+app.MapPut("/produtos/aplicardesconto/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id, [FromBody] double percentualDesconto) =>
+{
+    Produto? produto = ctx.Produtos.Find(id);
+    if (produto == null)
+    {
+        return Results.NotFound("Produto não encontrado");
+    }
+
+    produto.Preco *= (1 - percentualDesconto / 100);
+
+    ctx.Produtos.Update(produto);
+    ctx.SaveChanges();
+    return Results.Ok("Desconto aplicado com sucesso");
+});
