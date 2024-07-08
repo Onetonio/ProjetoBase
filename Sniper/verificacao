@@ -1,0 +1,409 @@
+//Verificação de Saldo Mínimo para Transferência
+
+// PUT: http://localhost:5000/contas/transferir/{id}
+app.MapPut("/contas/transferir/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id, [FromBody] Transferencia transferencia) =>
+{
+    Conta? contaOrigem = ctx.Contas.Find(id);
+    Conta? contaDestino = ctx.Contas.Find(transferencia.ContaDestinoId);
+
+    if (contaOrigem == null || contaDestino == null)
+    {
+        return Results.NotFound("Conta de origem ou destino não encontrada");
+    }
+
+    if (contaOrigem.Saldo < transferencia.Valor)
+    {
+        return Results.BadRequest("Saldo insuficiente na conta de origem");
+    }
+
+    if (contaOrigem.Saldo < 50) // Verifica se o saldo mínimo é mantido
+    {
+        return Results.BadRequest("Saldo na conta de origem não pode ser menor que 50");
+    }
+
+    contaOrigem.Saldo -= transferencia.Valor;
+    contaDestino.Saldo += transferencia.Valor;
+
+    ctx.Contas.Update(contaOrigem);
+    ctx.Contas.Update(contaDestino);
+    ctx.SaveChanges();
+    return Results.Ok("Transferência realizada com sucesso");
+});
+
+// Verificação de Idade Mínima para Registro
+
+// POST: http://localhost:5000/usuarios/registrar
+app.MapPost("/usuarios/registrar", ([FromServices] AppDataContext ctx, [FromBody] Usuario novoUsuario) =>
+{
+    if (novoUsuario.Idade < 18)
+    {
+        return Results.BadRequest("Idade mínima para registro é 18 anos");
+    }
+
+    ctx.Usuarios.Add(novoUsuario);
+    ctx.SaveChanges();
+    return Results.Created($"/usuarios/{novoUsuario.Id}", novoUsuario);
+});
+
+
+//Verificação de Estoque para Venda
+
+// POST: http://localhost:5000/vendas/realizar
+app.MapPost("/vendas/realizar", ([FromServices] AppDataContext ctx, [FromBody] Venda novaVenda) =>
+{
+    Produto? produto = ctx.Produtos.Find(novaVenda.ProdutoId);
+    if (produto == null)
+    {
+        return Results.NotFound("Produto não encontrado");
+    }
+
+    if (produto.QuantidadeEmEstoque < novaVenda.Quantidade)
+    {
+        return Results.BadRequest("Quantidade em estoque insuficiente");
+    }
+
+    produto.QuantidadeEmEstoque -= novaVenda.Quantidade;
+
+    ctx.Vendas.Add(novaVenda);
+    ctx.Produtos.Update(produto);
+    ctx.SaveChanges();
+    return Results.Ok("Venda realizada com sucesso");
+});
+
+
+//Verificação de Data de Expiração de Subscrição
+
+// GET: http://localhost:5000/subscricoes/validar/{id}
+app.MapGet("/subscricoes/validar/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id) =>
+{
+    Subscricao? subscricao = ctx.Subscricoes.Find(id);
+    if (subscricao == null)
+    {
+        return Results.NotFound("Subscrição não encontrada");
+    }
+
+    if (subscricao.DataExpiracao < DateTime.Now)
+    {
+        return Results.BadRequest("Subscrição expirada");
+    }
+
+    return Results.Ok("Subscrição válida");
+});
+
+
+//Verificação de Limite de Crédito
+
+// POST: http://localhost:5000/compras/realizar
+app.MapPost("/compras/realizar", ([FromServices] AppDataContext ctx, [FromBody] Compra novaCompra) =>
+{
+    Cliente? cliente = ctx.Clientes.Find(novaCompra.ClienteId);
+    if (cliente == null)
+    {
+        return Results.NotFound("Cliente não encontrado");
+    }
+
+    if (cliente.LimiteDeCredito < novaCompra.Valor)
+    {
+        return Results.BadRequest("Limite de crédito insuficiente");
+    }
+
+    cliente.LimiteDeCredito -= novaCompra.Valor;
+
+    ctx.Compras.Add(novaCompra);
+    ctx.Clientes.Update(cliente);
+    ctx.SaveChanges();
+    return Results.Ok("Compra realizada com sucesso");
+});
+
+
+//Verificação de Nota de Aluno para Aprovação
+
+// PUT: http://localhost:5000/alunos/atualizarnota/{id}
+app.MapPut("/alunos/atualizarnota/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id, [FromBody] double novaNota) =>
+{
+    Aluno? aluno = ctx.Alunos.Find(id);
+    if (aluno == null)
+    {
+        return Results.NotFound("Aluno não encontrado");
+    }
+
+    aluno.Nota = novaNota;
+
+    if (aluno.Nota < 5)
+    {
+        aluno.Status = "Reprovado";
+    }
+    else
+    {
+        aluno.Status = "Aprovado";
+    }
+
+    ctx.Alunos.Update(aluno);
+    ctx.SaveChanges();
+    return Results.Ok("Nota do aluno atualizada com sucesso");
+});
+
+
+//Verificação de Capacidade Máxima de um Evento
+
+// POST: http://localhost:5000/eventos/registrar
+app.MapPost("/eventos/registrar", ([FromServices] AppDataContext ctx, [FromBody] Participacao novaParticipacao) =>
+{
+    Evento? evento = ctx.Eventos.Find(novaParticipacao.EventoId);
+    if (evento == null)
+    {
+        return Results.NotFound("Evento não encontrado");
+    }
+
+    if (evento.CapacidadeMaxima <= evento.Participacoes.Count)
+    {
+        return Results.BadRequest("Capacidade máxima do evento atingida");
+    }
+
+    evento.Participacoes.Add(novaParticipacao);
+
+    ctx.Eventos.Update(evento);
+    ctx.SaveChanges();
+    return Results.Ok("Participação registrada com sucesso");
+});
+
+
+//Verificação de Autorização para Ação
+
+// DELETE: http://localhost:5000/documentos/deletar/{id}
+app.MapDelete("/documentos/deletar/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id, [FromHeader] string token) =>
+{
+    Documento? documento = ctx.Documentos.Find(id);
+    if (documento == null)
+    {
+        return Results.NotFound("Documento não encontrado");
+    }
+
+    Usuario? usuario = ctx.Usuarios.FirstOrDefault(u => u.Token == token);
+    if (usuario == null || !usuario.Permissoes.Contains("DeletarDocumentos"))
+    {
+        return Results.Forbidden("Usuário não autorizado");
+    }
+
+    ctx.Documentos.Remove(documento);
+    ctx.SaveChanges();
+    return Results.Ok("Documento deletado com sucesso");
+});
+
+
+//Verificação de Horário de Funcionamento
+
+// POST: http://localhost:5000/reservas/criar
+app.MapPost("/reservas/criar", ([FromServices] AppDataContext ctx, [FromBody] Reserva novaReserva) =>
+{
+    if (novaReserva.HorarioReserva.Hour < 9 || novaReserva.HorarioReserva.Hour > 18)
+    {
+        return Results.BadRequest("Horário de reserva fora do horário de funcionamento (9h às 18h)");
+    }
+
+    ctx.Reservas.Add(novaReserva);
+    ctx.SaveChanges();
+    return Results.Created($"/reservas/{novaReserva.Id}", novaReserva);
+});
+
+
+//Verificação de Nível de Permissão
+
+// PUT: http://localhost:5000/usuarios/promover/{id}
+app.MapPut("/usuarios/promover/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id, [FromHeader] string token) =>
+{
+    Usuario? usuario = ctx.Usuarios.Find(id);
+    Usuario? solicitante = ctx.Usuarios.FirstOrDefault(u => u.Token == token);
+
+    if (usuario == null)
+    {
+        return Results.NotFound("Usuário não encontrado");
+    }
+
+    if (solicitante == null || solicitante.NivelPermissao < 5)
+    {
+        return Results.Forbidden("Permissão insuficiente para promover o usuário");
+    }
+
+    usuario.NivelPermissao += 1;
+    ctx.Usuarios.Update(usuario);
+    ctx.SaveChanges();
+    return Results.Ok("Usuário promovido com sucesso");
+});
+
+
+//Verificação de Esgotamento de Ingressos
+
+// POST: http://localhost:5000/ingressos/comprar
+app.MapPost("/ingressos/comprar", ([FromServices] AppDataContext ctx, [FromBody] CompraIngresso compra) =>
+{
+    Evento? evento = ctx.Eventos.Find(compra.EventoId);
+    if (evento == null)
+    {
+        return Results.NotFound("Evento não encontrado");
+    }
+
+    if (evento.IngressosDisponiveis < compra.Quantidade)
+    {
+        return Results.BadRequest("Ingressos insuficientes disponíveis");
+    }
+
+    evento.IngressosDisponiveis -= compra.Quantidade;
+    ctx.Eventos.Update(evento);
+    ctx.ComprasIngressos.Add(compra);
+    ctx.SaveChanges();
+    return Results.Ok("Ingressos comprados com sucesso");
+});
+
+//Verificação de Documento Vencido
+
+// PUT: http://localhost:5000/documentos/renovar/{id}
+app.MapPut("/documentos/renovar/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id) =>
+{
+    Documento? documento = ctx.Documentos.Find(id);
+    if (documento == null)
+    {
+        return Results.NotFound("Documento não encontrado");
+    }
+
+    if (documento.DataValidade < DateTime.Now)
+    {
+        return Results.BadRequest("Documento já está vencido e não pode ser renovado");
+    }
+
+    documento.DataValidade = documento.DataValidade.AddYears(1);
+    ctx.Documentos.Update(documento);
+    ctx.SaveChanges();
+    return Results.Ok("Documento renovado com sucesso");
+});
+
+//Verificação de Capacidade de Armazenamento
+
+// POST: http://localhost:5000/arquivos/upload
+app.MapPost("/arquivos/upload", ([FromServices] AppDataContext ctx, [FromBody] Arquivo novoArquivo) =>
+{
+    Usuario? usuario = ctx.Usuarios.Find(novoArquivo.UsuarioId);
+    if (usuario == null)
+    {
+        return Results.NotFound("Usuário não encontrado");
+    }
+
+    if (usuario.EspacoArmazenamentoUsado + novoArquivo.Tamanho > usuario.EspacoArmazenamentoTotal)
+    {
+        return Results.BadRequest("Espaço de armazenamento insuficiente");
+    }
+
+    usuario.EspacoArmazenamentoUsado += novoArquivo.Tamanho;
+    ctx.Usuarios.Update(usuario);
+    ctx.Arquivos.Add(novoArquivo);
+    ctx.SaveChanges();
+    return Results.Created($"/arquivos/{novoArquivo.Id}", novoArquivo);
+});
+
+//Verificação de Validade de Código Promocional
+
+// POST: http://localhost:5000/compras/aplicarDesconto
+app.MapPost("/compras/aplicarDesconto", ([FromServices] AppDataContext ctx, [FromBody] AplicarDesconto desconto) =>
+{
+    Compra? compra = ctx.Compras.Find(desconto.CompraId);
+    if (compra == null)
+    {
+        return Results.NotFound("Compra não encontrada");
+    }
+
+    CodigoPromocional? codigo = ctx.CodigosPromocionais.FirstOrDefault(c => c.Codigo == desconto.Codigo);
+    if (codigo == null)
+    {
+        return Results.NotFound("Código promocional não encontrado");
+    }
+
+    if (codigo.DataValidade < DateTime.Now)
+    {
+        return Results.BadRequest("Código promocional expirado");
+    }
+
+    compra.ValorTotal -= desconto.ValorDesconto;
+    ctx.Compras.Update(compra);
+    ctx.SaveChanges();
+    return Results.Ok("Desconto aplicado com sucesso");
+});
+
+
+//Verificação de Prazo de Entrega de Pedido
+
+// PUT: http://localhost:5000/pedidos/atualizar/{id}
+app.MapPut("/pedidos/atualizar/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id, [FromBody] AtualizacaoPedido atualizacao) =>
+{
+    Pedido? pedido = ctx.Pedidos.Find(id);
+    if (pedido == null)
+    {
+        return Results.NotFound("Pedido não encontrado");
+    }
+
+    if (pedido.DataEntrega < DateTime.Now)
+    {
+        return Results.BadRequest("Não é possível atualizar pedido com prazo de entrega expirado");
+    }
+
+    pedido.Status = atualizacao.NovoStatus;
+    ctx.Pedidos.Update(pedido);
+    ctx.SaveChanges();
+    return Results.Ok("Pedido atualizado com sucesso");
+});
+
+// Verificação de Disponibilidade de Produto
+
+// GET: http://localhost:5000/produtos/disponibilidade/{id}
+app.MapGet("/produtos/disponibilidade/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id) =>
+{
+    Produto? produto = ctx.Produtos.Find(id);
+    if (produto == null)
+    {
+        return Results.NotFound("Produto não encontrado");
+    }
+
+    if (produto.QuantidadeEmEstoque <= 0)
+    {
+        return Results.Ok("Produto indisponível");
+    }
+
+    return Results.Ok("Produto disponível");
+});
+
+//Verificação de Duplicidade de Email ao Criar Usuário
+
+// POST: http://localhost:5000/usuarios/criar
+app.MapPost("/usuarios/criar", ([FromServices] AppDataContext ctx, [FromBody] Usuario novoUsuario) =>
+{
+    if (ctx.Usuarios.Any(u => u.Email == novoUsuario.Email))
+    {
+        return Results.BadRequest("Email já cadastrado");
+    }
+
+    ctx.Usuarios.Add(novoUsuario);
+    ctx.SaveChanges();
+    return Results.Created($"/usuarios/{novoUsuario.Id}", novoUsuario);
+});
+
+//Verificação de Estoque ao Criar Pedido
+
+// POST: http://localhost:5000/pedidos/criar
+app.MapPost("/pedidos/criar", ([FromServices] AppDataContext ctx, [FromBody] Pedido novoPedido) =>
+{
+    Produto? produto = ctx.Produtos.Find(novoPedido.ProdutoId);
+    if (produto == null)
+    {
+        return Results.NotFound("Produto não encontrado");
+    }
+
+    if (produto.QuantidadeEmEstoque < novoPedido.Quantidade)
+    {
+        return Results.BadRequest("Quantidade em estoque insuficiente");
+    }
+
+    produto.QuantidadeEmEstoque -= novoPedido.Quantidade;
+    ctx.Produtos.Update(produto);
+    ctx.Pedidos.Add(novoPedido);
+    ctx.SaveChanges();
+    return Results.Created($"/pedidos/{novoPedido.Id}", novoPedido);
+});

@@ -1,0 +1,120 @@
+//Validação de Dados da Tarefa
+
+app.MapPost("/tarefas/criar", ([FromServices] AppDataContext ctx, [FromBody] Tarefa novaTarefa) =>
+{
+    if (string.IsNullOrEmpty(novaTarefa.Descricao))
+    {
+        return Results.BadRequest("Descrição da tarefa é obrigatória.");
+    }
+
+    if (novaTarefa.DataConclusao < DateTime.Now)
+    {
+        return Results.BadRequest("A data de conclusão não pode ser no passado.");
+    }
+
+    ctx.Tarefas.Add(novaTarefa);
+    ctx.SaveChanges();
+    return Results.Created($"/tarefas/{novaTarefa.Id}", novaTarefa);
+});
+
+//Verificação de Existência da Tarefa para Exclusão
+
+app.MapDelete("/tarefas/deletar/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id) =>
+{
+    Tarefa? tarefa = ctx.Tarefas.Find(id);
+    if (tarefa == null)
+    {
+        return Results.NotFound("Tarefa não encontrada");
+    }
+
+    ctx.Tarefas.Remove(tarefa);
+    ctx.SaveChanges();
+    return Results.Ok("Tarefa deletada com sucesso");
+});
+
+// Atualização de Prioridade da Tarefa
+
+app.MapPut("/tarefas/alterar-prioridade/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id, [FromBody] int novaPrioridade) =>
+{
+    Tarefa? tarefa = ctx.Tarefas.Find(id);
+    if (tarefa == null)
+    {
+        return Results.NotFound("Tarefa não encontrada");
+    }
+
+    if (novaPrioridade < 1 || novaPrioridade > 5)
+    {
+        return Results.BadRequest("A prioridade deve estar entre 1 e 5.");
+    }
+
+    tarefa.Prioridade = novaPrioridade;
+
+    ctx.Tarefas.Update(tarefa);
+    ctx.SaveChanges();
+    return Results.Ok("Prioridade da tarefa alterada com sucesso");
+});
+
+
+//Verificação de Condições Múltiplas na Criação de Tarefas
+
+app.MapPost("/tarefas/criar", ([FromServices] AppDataContext ctx, [FromBody] Tarefa novaTarefa) =>
+{
+    if (string.IsNullOrEmpty(novaTarefa.Descricao))
+    {
+        return Results.BadRequest("Descrição da tarefa é obrigatória.");
+    }
+
+    if (novaTarefa.Prioridade < 1 || novaTarefa.Prioridade > 5)
+    {
+        return Results.BadRequest("A prioridade deve estar entre 1 e 5.");
+    }
+
+    ctx.Tarefas.Add(novaTarefa);
+    ctx.SaveChanges();
+    return Results.Created($"/tarefas/{novaTarefa.Id}", novaTarefa);
+});
+
+
+//Filtragem de Tarefas por Status
+
+app.MapGet("/tarefas/status/{status}", ([FromServices] AppDataContext ctx, [FromRoute] string status) =>
+{
+    var tarefas = ctx.Tarefas.Where(t => t.Status == status).ToList();
+    return Results.Ok(tarefas);
+});
+
+
+// Verificação de Conflito de Dados
+Verificamos se há alguma tarefa com o mesmo nome antes de criar uma nova.
+
+app.MapPost("/tarefas/criar", ([FromServices] AppDataContext ctx, [FromBody] Tarefa novaTarefa) =>
+{
+    if (ctx.Tarefas.Any(t => t.Nome == novaTarefa.Nome))
+    {
+        return Results.Conflict("Já existe uma tarefa com este nome.");
+    }
+
+    ctx.Tarefas.Add(novaTarefa);
+    ctx.SaveChanges();
+    return Results.Created($"/tarefas/{novaTarefa.Id}", novaTarefa);
+});
+
+// Validação de Entrada na Exclusão de Tarefas
+
+app.MapDelete("/tarefas/deletar/{id}", ([FromServices] AppDataContext ctx, [FromRoute] string id) =>
+{
+    Tarefa? tarefa = ctx.Tarefas.Find(id);
+    if (tarefa == null)
+    {
+        return Results.NotFound("Tarefa não encontrada");
+    }
+
+    if (tarefa.Status == "Concluída")
+    {
+        return Results.BadRequest("Não é possível excluir uma tarefa concluída.");
+    }
+
+    ctx.Tarefas.Remove(tarefa);
+    ctx.SaveChanges();
+    return Results.Ok("Tarefa deletada com sucesso");
+});
